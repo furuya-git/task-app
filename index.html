@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>疎通テスト｜タスク管理アプリ</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --text: #1f2733;
+    --muted: #67707d;
+    --border: #e0e5ec;
+    --ok-bg: #e6f7ee; --ok-fg: #0a7d43; --ok-bd: #a8e2c4;
+    --ng-bg: #fdecec; --ng-fg: #c0392b; --ng-bd: #f3bcbc;
+    --wait-bg: #fef7e6; --wait-fg: #9a6a00; --wait-bd: #f0dca0;
+    --accent: #2f6fed;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181f; --card: #1e242e; --text: #e6eaf0; --muted: #9aa4b2;
+      --border: #2c3441;
+      --ok-bg: #10331f; --ok-fg: #52d08a; --ok-bd: #1f5a37;
+      --ng-bg: #3a1c1a; --ng-fg: #f08a80; --ng-bd: #6a2c28;
+      --wait-bg: #33290f; --wait-fg: #e0b64d; --wait-bd: #5c491c;
+      --accent: #5a8dff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px;
+    background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", "Meiryo", sans-serif;
+    line-height: 1.7;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 24px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; margin-bottom: 16px;
+  }
+  .card h2 { font-size: 1rem; margin: 0 0 12px; }
+  .status {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; border-radius: 10px; font-weight: 600;
+    border: 1px solid transparent; margin-bottom: 10px;
+  }
+  .status .dot { font-size: 1.2rem; line-height: 1; }
+  .ok   { background: var(--ok-bg);   color: var(--ok-fg);   border-color: var(--ok-bd); }
+  .ng   { background: var(--ng-bg);   color: var(--ng-fg);   border-color: var(--ng-bd); }
+  .wait { background: var(--wait-bg); color: var(--wait-fg); border-color: var(--wait-bd); }
+  .detail { color: var(--muted); font-size: 0.88rem; margin: 2px 0 0; }
+  button {
+    appearance: none; border: none; cursor: pointer;
+    background: var(--accent); color: #fff;
+    font-size: 1rem; font-weight: 600;
+    padding: 12px 18px; border-radius: 10px; width: 100%;
+    margin-top: 6px;
+  }
+  button:active { transform: translateY(1px); }
+  .big-time {
+    font-size: 1.5rem; font-weight: 700; text-align: center;
+    padding: 14px; letter-spacing: 0.5px;
+  }
+  ol { padding-left: 1.2em; margin: 8px 0 0; }
+  ol li { margin-bottom: 8px; }
+  .step-num {
+    display: inline-block; min-width: 1.6em;
+  }
+  .hint { font-size: 0.85rem; color: var(--muted); }
+  code {
+    background: var(--border); padding: 1px 6px; border-radius: 5px;
+    font-size: 0.85em;
+  }
+  .env { font-size: 0.82rem; color: var(--muted); word-break: break-all; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>疎通テスト</h1>
+  <p class="sub">このページ1枚で「開ける・保存できる・閉じても残る」を確認します。<br>本体アプリを作る前の、最初の関門です。</p>
+
+  <!-- 判定1: 開けたか -->
+  <div class="card">
+    <h2>① ページが開けたか</h2>
+    <div class="status ok" id="net">
+      <span class="dot">✅</span>
+      <span>合格 ― このページが表示されている時点で、URLは開けています</span>
+    </div>
+    <p class="detail">この画面が社用PCのEdgeで見えていれば、①はクリアです。</p>
+  </div>
+
+  <!-- 判定2: 保存できるか -->
+  <div class="card">
+    <h2>② データを保存できるか</h2>
+    <div class="status wait" id="storage">
+      <span class="dot">⏳</span>
+      <span>確認中…</span>
+    </div>
+    <p class="detail" id="storage-detail"></p>
+  </div>
+
+  <!-- 判定3: 閉じても残るか -->
+  <div class="card">
+    <h2>③ 閉じても残るか（本番の確認）</h2>
+
+    <div class="status" id="memory">
+      <span class="dot"></span>
+      <span></span>
+    </div>
+
+    <div class="big-time" id="saved-time"></div>
+
+    <button id="save-btn">現在時刻を記録する</button>
+
+    <div style="margin-top:16px;">
+      <strong style="font-size:0.92rem;">テスト手順</strong>
+      <ol>
+        <li><span class="step-num">1.</span>上のボタンを1回押す（時刻が記録されます）</li>
+        <li><span class="step-num">2.</span><strong>Edgeを完全に終了する</strong>（右上の×で全ウィンドウを閉じる。タブを閉じるだけではダメ）</li>
+        <li><span class="step-num">3.</span>できれば翌朝、もう一度このURLを開く</li>
+        <li><span class="step-num">4.</span>記録した時刻がまだ表示されていれば <strong>合格 ✅</strong><br>
+          <span class="hint">まっさら（「まだ記録なし」）に戻っていたら、この社用PCはブラウザを閉じるとデータを消す設定です。その場合は別の保存方法を考えます。</span></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>環境メモ</h2>
+    <p class="env" id="env"></p>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var KEY = "renkei_test_saved_time";
+
+  // --- ② localStorageに書けるか ---
+  var storageEl = document.getElementById("storage");
+  var storageDetail = document.getElementById("storage-detail");
+  var storageOK = false;
+  try {
+    var probe = "__probe__" + Date.now();
+    localStorage.setItem(probe, "1");
+    var readback = localStorage.getItem(probe);
+    localStorage.removeItem(probe);
+    if (readback === "1") {
+      storageOK = true;
+      storageEl.className = "status ok";
+      storageEl.innerHTML = '<span class="dot">✅</span><span>合格 ― このブラウザはデータを保存できます</span>';
+      storageDetail.textContent = "書き込みと読み出しに成功しました。";
+    } else {
+      throw new Error("readback mismatch");
+    }
+  } catch (e) {
+    storageEl.className = "status ng";
+    storageEl.innerHTML = '<span class="dot">⛔</span><span>不合格 ― このブラウザはデータを保存できません</span>';
+    storageDetail.textContent = "原因: " + (e && e.message ? e.message : e) +
+      "。プライベートウィンドウで開いている、または保存が禁止されている可能性があります。";
+  }
+
+  // --- ③ 前回保存した時刻を表示 ---
+  var memoryEl = document.getElementById("memory");
+  var savedTimeEl = document.getElementById("saved-time");
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) {}
+
+  function fmt(ts) {
+    var d = new Date(Number(ts));
+    if (isNaN(d.getTime())) return String(ts);
+    var p = function (n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "/" + p(d.getMonth() + 1) + "/" + p(d.getDate()) +
+      " " + p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+  }
+
+  function render() {
+    var v = null;
+    try { v = localStorage.getItem(KEY); } catch (e) {}
+    if (v) {
+      memoryEl.className = "status ok";
+      memoryEl.innerHTML = '<span class="dot">✅</span><span>前回の記録が残っていました</span>';
+      savedTimeEl.textContent = fmt(v);
+    } else {
+      memoryEl.className = "status wait";
+      memoryEl.innerHTML = '<span class="dot">⏳</span><span>まだ記録なし ― 下のボタンを押してください</span>';
+      savedTimeEl.textContent = "―";
+    }
+  }
+  render();
+
+  // --- 記録ボタン ---
+  document.getElementById("save-btn").addEventListener("click", function () {
+    if (!storageOK) {
+      alert("このブラウザは保存ができないため、記録できません（②が不合格です）。");
+      return;
+    }
+    try {
+      localStorage.setItem(KEY, String(Date.now()));
+      render();
+    } catch (e) {
+      alert("保存に失敗しました: " + (e && e.message ? e.message : e));
+    }
+  });
+
+  // --- 環境メモ ---
+  var origin = location.origin && location.origin !== "null" ? location.origin : "(なし — file:// で開いています)";
+  document.getElementById("env").textContent =
+    "開いているURL: " + location.href + " ／ オリジン: " + origin;
+})();
+</script>
+</body>
+</html>
